@@ -7,6 +7,7 @@ from pygame.locals import KEYDOWN
 import tkinter
 from tkinter import messagebox
 from puzzle_solver import Solution
+import sys
 
 
 class Game:
@@ -21,16 +22,8 @@ class Game:
         self.start_game = False
         self.start_timer = False
         self.elapsed_time = 0
+        self.click_sound = pygame.mixer.Sound('clicksound.ogg')
         # self.high_score = float(self.get_high_scores()[0])
-
-    # def get_high_scores(self):
-    #     with open("high_score.txt", "r") as file:
-    #         scores = file.read().splitlines()
-    #     return scores
-    #
-    # def save_score(self):
-    #     with open("high_score.txt", "w") as file:
-    #         file.write(str("%.3f\n" % self.high_score))
 
     def create_game(self):
         grid = [[x + y * GAME_SIZE for x in range(1, GAME_SIZE + 1)] for y in range(GAME_SIZE)]
@@ -108,7 +101,7 @@ class Game:
         self.buttons_list = []
         self.buttons_list.append(RoundedButton(500, 100, 200, 50, "Shuffle", WHITE, BLACK))
         self.buttons_list.append(RoundedButton(500, 170, 200, 50, "Solve", WHITE, BLACK))
-        # self.buttons_list.append(RoundedButton(500, 170, 200, 50, "Solve", WHITE, BLACK))
+        self.buttons_list.append(RoundedButton(500, 240, 200, 50, "Start", WHITE, BLACK))
         self.draw_tiles()
 
     def run(self):
@@ -123,15 +116,10 @@ class Game:
         if self.start_game:
             if self.tiles_grid == self.tiles_grid_completed:
                 root = tkinter.Tk()
-                root.withdraw()  # Hide the main window
+                root.withdraw()  # Hide main window
                 messagebox.showinfo("Game Completed", "Congratulations! You have completed the game!")
-                root.destroy()  # Destroy the main window
+                root.destroy()  # Destroy main window
                 self.start_game = False
-                # if self.high_score > 0:
-                #     self.high_score = self.elapsed_time if self.elapsed_time < self.high_score else self.high_score
-                # else:
-                #     self.high_score = self.elapsed_time
-                # self.save_score()
 
             if self.start_timer:
                 self.timer = time.time()
@@ -161,8 +149,6 @@ class Game:
         self.draw_grid()
         for button in self.buttons_list:
             button.draw(self.screen)
-        # UIElement(550, 35, "%.3f" % self.elapsed_time).draw(self.screen)
-        # UIElement(430, 300, "High Score - %.3f" % (self.high_score if self.high_score > 0 else 0)).draw(self.screen)
         pygame.display.flip()
 
     def events(self):
@@ -174,40 +160,33 @@ class Game:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 for row, tiles in enumerate(self.tiles):
                     for col, tile in enumerate(tiles):
-                        if tile.click(mouse_x, mouse_y):
-                            if tile.right() and self.tiles_grid[row][col + 1] == 0:
-                                self.tiles_grid[row][col], self.tiles_grid[row][col + 1] = self.tiles_grid[row][
-                                    col + 1], self.tiles_grid[row][col]
-
-                            if tile.left() and self.tiles_grid[row][col - 1] == 0:
-                                self.tiles_grid[row][col], self.tiles_grid[row][col - 1] = self.tiles_grid[row][
-                                    col - 1], self.tiles_grid[row][col]
-
-                                if tile.up() and self.tiles_grid[row - 1][col] == 0:
-                                    self.tiles_grid[row][col], self.tiles_grid[row - 1][col] = self.tiles_grid[row - 1][
-                                        col], self.tiles_grid[row][col]
-
-                                    if tile.down() and self.tiles_grid[row + 1][col] == 0:
-                                        self.tiles_grid[row][col], self.tiles_grid[row + 1][col] = \
-                                            self.tiles_grid[row + 1][col], self.tiles_grid[row][col]
-
-                                    self.draw_tiles()
                         for button in self.buttons_list:
                             if button.click(mouse_x, mouse_y):
                                 if button.text == "Shuffle":
+                                    self.click_sound.play()
                                     self.shuffle_time = 0
                                     self.start_shuffle = True
+                                if button.text == "Start":
+                                    self.click_sound.play()
+                                    self.start_game = True
                                 if button.text == "Solve":
-                                    # Convert the current game state to the puzzle state
-                                    puzzle_state = self.convert_puzzle_state()
+                                    self.click_sound.play()
+                                    # Redirect stdout to a file
+                                    original_stdout = sys.stdout  # Save a reference
+                                    with open('log.txt', 'a') as f:  # Using 'a' to append instead of overwriting
+                                        sys.stdout = f  # Change the standard output to the file created
 
-                                    # Create a Solution object and run the solution
-                                    solution = Solution(puzzle_state)
-                                    solution.solution()
+                                        # Convert the current game state to the puzzle state
+                                        puzzle_state = self.convert_puzzle_state()
 
-                                    # TODO: Update game's state with the solution...
+                                        # Create a Solution object and run the solution
+                                        solution = Solution(puzzle_state)
+                                        solution.solution()
 
-                                    self.new()
+                                        # TODO: Update game's state with the solution...
+
+                                        self.new()
+                                    sys.stdout = original_stdout  # Reset the standard output to its original value
             if event.type == KEYDOWN:
                 key = event.key
                 if key == pygame.K_LEFT or key == pygame.K_a:  # Move left
